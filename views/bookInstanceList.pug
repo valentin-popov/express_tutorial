@@ -1,0 +1,20 @@
+extends layout
+
+block content
+  h1= title
+
+  ul
+    each val in bookInstanceList
+      li
+        a(href=val.url) #{val.book.title} : #{val.imprint} -
+        if val.status=='Available'
+          span.text-success &nbsp; #{ val.status}
+        else if val.status=='Maintenance'
+          span.text-danger &nbsp; #{val.status}
+        else
+          span.text-warning &nbsp; #{val.status}
+        if val.status!='Available'
+          span  (Due: #{val.dueBack} )
+
+    else
+      li There are no book copies in this library.
