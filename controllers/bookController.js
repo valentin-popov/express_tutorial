@@ -2,7 +2,7 @@ const Book = require('../models/book');
 const Author = require('../models/author');
 const Genre = require('../models/genre');
 const BookInstance = require('../models/bookInstance');
-const config = require('../config');
+const { bookViews, globallyExcludedFields, indexView, mongoose } = require('../config');
 
 exports.index = async (req, res) => {
 	await Promise.all([
@@ -12,7 +12,7 @@ exports.index = async (req, res) => {
 		Author.countDocuments({}).exec(),
 		Genre.countDocuments({}).exec()
 	]).then((data) => {
-		res.render('index', {
+		res.render(indexView, {
 			title: 'Home',
 			data: data
 		});
@@ -24,36 +24,36 @@ exports.index = async (req, res) => {
 exports.list = (req, res, next) => {
 	Book.find({}, 'title author')
 		.sort({ title: 1 })
-		.populate('author', config.globallyExcludedFields)
+		.populate('author', globallyExcludedFields)
 		.exec(function (err, books) {
 			if (err) {
 				return next(err);
 			}
-			res.render('bookList', { title: 'Book List', bookList: books });
+			res.render(bookViews.list, { title: 'Book List', bookList: books });
 		});
 };
 
 // Returns an object containing info about the current book and all its instances.
 exports.detail = async (req, res, next) => {
-	const bookId = new config.mongoose.Types.ObjectId(req.params.id);
+	const bookId = new mongoose.Types.ObjectId(req.params.id);
 	try {
 		let book;
-		let bookInstances = await BookInstance.find({book: bookId}, config.globallyExcludedFields)
+		let bookInstances = await BookInstance.find({book: bookId}, globallyExcludedFields)
 			.populate({
 				path: 'book',
 				populate: ['author', 'genre'],
-				select: config.globallyExcludedFields
+				select: globallyExcludedFields
 			})
 			.exec();
 
 		// Book has no instance - book must be read by id
 		if (!bookInstances.length) {
-			book = await Book.findById(bookId, config.globallyExcludedFields)
-				.populate('author', config.globallyExcludedFields)
-				.populate('genre', config.globallyExcludedFields)
+			book = await Book.findById(bookId, globallyExcludedFields)
+				.populate('author', globallyExcludedFields)
+				.populate('genre', globallyExcludedFields)
 				.exec();
 		}
-		res.render('bookDetail', { 
+		res.render(bookViews.detail, { 
 			book: book || bookInstances[0].book, 
 			bookInstances: bookInstances 
 		});
@@ -63,8 +63,19 @@ exports.detail = async (req, res, next) => {
 };
 
 // Display book create form on GET.
-exports.createGet = (req, res) => {
-	res.send('NOT IMPLEMENTED: Book create GET');
+exports.createGet = async (req, res, next) => {
+	await Promise.all([
+		Author.find({}, globallyExcludedFields).exec(),
+		Genre.find({}, globallyExcludedFields).exec()
+	]).then(([authors, genres]) => {
+		res.render(bookViews.form, {
+			title: 'Create Book',
+			authors,
+			genres
+		});
+	}).catch(e => {
+		return next(e);
+	});
 };
 
 // Display book delete form on GET.
