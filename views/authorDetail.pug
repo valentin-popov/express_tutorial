@@ -13,7 +13,11 @@ block content
       each book in books
         dt
           a(href=book.url) #{book.title}
-        dd #{book.summary}
+        dd #{book.description}
 
       else
         p This author has no books.
+
+  hr
+  p
+    a(href=author.url+'/delete') Delete author

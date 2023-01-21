@@ -1,5 +1,8 @@
 const BookInstance = require('../models/bookInstance');
+const Book = require('../models/book');
 const config = require('../config');
+const { body, validationResult } = require('express-validator');
+const { globallyExcludedFields, bookInstanceViews } = require('../config');
 
 // Display list of all BookInstances.
 exports.list = (req, res, next) => {
@@ -10,7 +13,7 @@ exports.list = (req, res, next) => {
 			if (err) {
 				return next(err);
 			}
-			res.render('bookInstanceList', {
+			res.render(bookInstanceViews.list, {
 				title: 'Book Instance List',
 				bookInstanceList: bookInstances
 			});
@@ -19,32 +22,78 @@ exports.list = (req, res, next) => {
 
 // Display detail page for a specific BookInstance.
 exports.detail = async (req, res, next) => {
-	try {
-		const bookInstance = await BookInstance.findById(req.params.id, config.globallyExcludedFields)
-			.populate('book', config.globallyExcludedFields)
-			.exec();
-		res.render('bookInstanceDetail', { bookInstance });
-	} catch (e) {
-		return next(e);
-	}
+	const bookInstance = await BookInstance.findById(req.params.id, globallyExcludedFields)
+		.populate('book', globallyExcludedFields)
+		.exec()
+		.catch(e => {
+			return next(e);
+		});
+	res.render(bookInstanceViews.detail, { bookInstance });
 };
 
 // Display BookInstance create form on GET.
-exports.createGet = (req, res) => {
-	res.send('NOT IMPLEMENTED: BookInstance create GET');
+exports.createGet = async (req, res, next) => {
+	const books = await Book.find({}, 'title').exec()
+		.catch(e => {
+			return next(e);
+		});
+	res.render(bookInstanceViews.form, {
+		title: 'Create Book Instance',
+		books
+	});
 };
 
 // Handle BookInstance create on POST.
-exports.createPost = (req, res) => {
-	res.send('NOT IMPLEMENTED: BookInstance create POST');
-};
+exports.createPost = [
+	body(['book', 'status'], 'Error! Book and status are required.')
+		.trim()
+		.isLength({ min: 1 })
+		.escape(),
+	body('dueBack')
+		.optional({ checkFalsy: true}),
+
+	async (req, res, next) => {
+		
+		const bookInstance = new BookInstance({
+			book: req.body.book,
+			imprint: req.body.imprint,
+			status: req.body.status,
+			dueBack: req.body.dueBack
+		});
+
+		const errors = validationResult(req);
+		if (!errors.isEmpty()) {
+			// There are errors. Render the form again with sanitized data.
+			const books = await Book.find({}, 'title')
+			.exec()
+			.catch(e => {
+				return next(e);
+			});
+			
+			res.render(bookInstanceViews.form, {
+				title: 'Create Book Instance',
+				books,
+				bookInstance,
+				selectedBook: req.body.book._id,
+				errors: errors.array(),
+			});
+			return;
+		}
+		
+		await bookInstance.save()
+			.catch(e => {
+				return next(e);
+			});
+		
+		res.redirect(bookInstance.url);
+	}
+];
 
 // Display BookInstance delete form on GET.
 exports.deleteGet = (req, res) => {
 	res.send('NOT IMPLEMENTED: BookInstance delete GET');
 };
 
-// Handle BookInstance delete on POST.
 exports.deletePost = (req, res) => {
 	res.send('NOT IMPLEMENTED: BookInstance delete POST');
 };
