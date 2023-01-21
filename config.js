@@ -3,6 +3,7 @@
 // fields that must not be returned in db read response
 const globallyExcludedFields = '-__v';
 const mongoose = require('mongoose');
+mongoose.set('strictQuery', false);
 const dbURL = '';
 mongoose.connect(dbURL, { useNewUrlParser: true, useUnifiedTopology: true })
 	.catch(error => console.error(error)); 

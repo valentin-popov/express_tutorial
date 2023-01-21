@@ -72,12 +72,11 @@ exports.createPost = [
 
 		if (!errors.isEmpty()) {
 			// There are errors. Render form again with sanitized values/errors messages.
-			res.render(authorViews.form, {
+			return res.render(authorViews.form, {
 				title: 'Create Author',
 				author: req.body,
 				errors: errors.array(),
 			});
-			return;
 		}
 
 		// Search for existing author
@@ -89,8 +88,7 @@ exports.createPost = [
 		});
 
 		if (foundAuthor) {
-			res.redirect(foundAuthor.url);
-			return;
+			return res.redirect(foundAuthor.url);
 		}
 
 		// Create an Author object with escaped and trimmed data.
@@ -111,13 +109,35 @@ exports.createPost = [
 ];
 
 // Display Author delete form on GET.
-exports.deleteGet = (req, res) => {
-	res.send('NOT IMPLEMENTED: Author delete GET');
+exports.deleteGet = async (req, res, next) => {
+	
+	// check if there are books written by this author
+	// and read author by id
+	await Promise.all([
+		Author.findById(req.params.id, globallyExcludedFields),
+		Book.find({ author: req.params.id }, 'title')
+	]).then(([author, books]) => {
+		// findById does not throw error on empty result
+		if (!author) {
+			return res.redirect('/catalog/author');
+		}
+		res.render(authorViews.delete, {
+			author,
+			books
+		});
+	}).catch(e => {
+		return next(e);
+	});
 };
 
 // Handle Author delete on POST.
-exports.deletePost = (req, res) => {
-	res.send('NOT IMPLEMENTED: Author delete POST');
+exports.deletePost = async (req, res, next) => {
+	await Author.deleteOne({_id: req.body.authorId})
+		.exec()
+		.catch(e => {
+			return next(e);
+		});
+	res.redirect('/catalog/author');
 };
 
 // Display Author update form on GET.
