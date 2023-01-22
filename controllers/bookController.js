@@ -95,27 +95,87 @@ exports.deleteGet = async (req, res, next) => {
 };
 
 // Display book update form on GET.
-exports.updateGet = (req, res) => {
-	res.send('NOT IMPLEMENTED: Book update GET');
+exports.updateGet = async (req, res, next) => {
+
+	let [book, authors, genres] = await Promise.all([
+		Book.findById(req.params.id, globallyExcludedFields)
+			.populate('author', globallyExcludedFields),
+		Author.find({}, globallyExcludedFields),
+		Genre.find({}, globallyExcludedFields),
+	]).catch(e => {
+		return next(e);
+	});
+
+	// mark the checked genre
+	genres.forEach(genre => {
+		if (book.genre.includes(genre._id)) {
+			genre.checked = true;
+		}
+	});
+
+	res.render(bookViews.form, {
+		title: 'Update book',
+		book,
+		authors,
+		genres
+	});
+
 };
 
+const bookFormValidation = [
+	body(['title', 'author', 'isbn', 'description'], 'Error. Invalid data in field')
+		.trim()
+		.isLength({ min: 1 })
+		.escape(),
+	body('genre.*').escape(),
+];
 
+/**
+ * Renders the book form on create/update with errors.
+ */
+async function renderFormOnError(res, next, formTitle, book, errors) {
+
+	// Find all the authors
+	const authors = await Author.find({},
+		globallyExcludedFields).catch(exc => {
+		return next(exc);
+	});
+
+	// Find all the genres
+	let genres = await Genre.find({},
+		globallyExcludedFields).catch(exc => {
+		return next(exc);
+	});
+
+	// If the genres match the genres of the book, mark them as checked
+	genres.forEach(genre => {
+		if (book.genre.includes(genre._id)) {
+			genre.checked = true;
+		}
+	});
+
+	// The form is rendered again with sanitized data
+	return res.render(bookViews.form, {
+		title: formTitle,
+		book,
+		authors,
+		genres,
+		errors: errors.errors
+	});
+
+}
 
 // Handle book create on POST.
 exports.createPost = [
-	
+
 	(req, res, next) => {
 		if (!Array.isArray(req.body.genre)) {
-		  req.body.genre = [req.body.genre] || [];
+			req.body.genre = [req.body.genre] || [];
 		}
 		next();
 	},
 
-	body(['title', 'author', 'isbn'], 'Error. Invalid field data!')
-		.trim()
-		.isLength({ min: 1 })
-		.escape(),
-	body("genre.*").escape(),
+	bookFormValidation,
 
 	// Actual job happens here
 	async (req, res, next) => {
@@ -132,48 +192,20 @@ exports.createPost = [
 		});
 
 		if (!errors.isEmpty()) {
-			// There are errors. Render form again with sanitized values/errors messages.
-
-			// Find all the authors
-			const authors = await Author.find({},
-				globallyExcludedFields).catch(exc => {
-				return next(exc);
-			});
-
-			// Find all the genres
-			let genres = await Genre.find({},
-				globallyExcludedFields).catch(exc => {
-				return next(exc);
-			});
-			
-			// If the genres match the genres of the book, mark them as checked
-			for (genre of genres) {
-				if (book.genre.includes(genre._id)) {
-					genre.checked = true;
-				}
-			}
-
-			// The form is rendered again with sanitized data
-			res.render(bookViews.form, {
-				title: 'Create Book',
-				book,
-				authors,
-				genres,
-				errors
-			});
+			return renderFormOnError(res, next, 'Create Book', book, errors);
 		}
-		
+
 		await book.save().catch(exc => {
 			return next(exc);
 		});
-		
+
 		res.redirect(book.url);
 
 	}
 ];
 
 // Handle book delete on POST.
-exports.deletePost = async (req, res) => {
+exports.deletePost = async (req, res, next) => {
 	await Book.deleteOne({_id: req.body.bookId})
 		.exec()
 		.catch(e => {
@@ -183,6 +215,38 @@ exports.deletePost = async (req, res) => {
 };
 
 // Handle book update on POST.
-exports.updatePost = (req, res) => {
-	res.send('NOT IMPLEMENTED: Book update POST');
-};
+exports.updatePost = [
+
+	(req, res, next) => {
+		if (!Array.isArray(req.body.genre)) {
+			req.body.genre = [req.body.genre] || [];
+		}
+		next();
+	},
+
+	bookFormValidation,
+
+	async (req, res, next) => {
+
+		const errors = validationResult(req);
+
+		// Create a Book object with escaped and trimmed data.
+		const book = new Book({
+			_id: req.params.id,
+			title: req.body.title,
+			author: req.body.author,
+			description: req.body.description,
+			isbn: req.body.isbn,
+			genre: req.body.genre
+		});
+
+		if (!errors.isEmpty()) {
+			return renderFormOnError(res, next, 'Update Book', book, errors);
+		}
+
+		await Book.updateOne({_id: req.params.id}, book).catch(exc => {
+			return next(exc);
+		});
+		res.redirect(book.url);
+	}
+];

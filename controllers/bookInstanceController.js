@@ -1,6 +1,5 @@
 const BookInstance = require('../models/bookInstance');
 const Book = require('../models/book');
-const config = require('../config');
 const { body, validationResult } = require('express-validator');
 const { globallyExcludedFields, bookInstanceViews } = require('../config');
 
@@ -65,10 +64,10 @@ exports.createPost = [
 		if (!errors.isEmpty()) {
 			// There are errors. Render the form again with sanitized data.
 			const books = await Book.find({}, 'title')
-			.exec()
-			.catch(e => {
-				return next(e);
-			});
+				.exec()
+				.catch(e => {
+					return next(e);
+				});
 			
 			res.render(bookInstanceViews.form, {
 				title: 'Create Book Instance',
