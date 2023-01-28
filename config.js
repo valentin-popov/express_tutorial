@@ -29,7 +29,6 @@ const bookInstanceViews = {
 	list: 'bookInstanceList',
 	detail: 'bookInstanceDetail',
 	form: 'bookInstanceForm',
-	delete: 'bookInstanceDelete'
 };
 
 // genre

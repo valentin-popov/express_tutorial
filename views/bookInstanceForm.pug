@@ -15,7 +15,7 @@ block content
       label(for='imprint') Imprint:
       input#imprint.form-control(type='text' placeholder='Publisher and date information' name='imprint' required='true' value=(undefined===bookInstance ? '' : bookInstance.imprint))
     div.form-group
-      label(for='dueBack') Date when book available:
+      label(for='dueBack') Date when book is available:
       input#dueBack.form-control(type='date' name='dueBack' value=(undefined===bookInstance ? '' : bookInstance.dueBack))
 
     div.form-group
