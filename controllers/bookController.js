@@ -83,15 +83,22 @@ exports.createGet = async (req, res, next) => {
 
 // Display book delete form on GET.
 exports.deleteGet = async (req, res, next) => {
-	const book = await Book.findById(req.params.id, 'title description')
-		.exec()
-		.catch(e => {
-			return next(e);
+
+	Promise.all([
+		await Book.findById(req.params.id, 'title description').exec(),
+		await BookInstance.countDocuments({'book': req.params.id}).exec()
+	]).then(([book, instanceNumber]) => {
+		if(!book) {
+			return res.redirect('/catalog/book');
+		}
+		res.render(bookViews.delete, {
+			book,
+			instanceNumber
 		});
-	if(!book) {
-		return res.redirect('/catalog/book');
-	}
-	res.render(bookViews.delete, { book });
+	}).catch(e => {
+		return next(e);
+	});
+	
 };
 
 // Display book update form on GET.
@@ -127,7 +134,7 @@ const bookFormValidation = [
 		.trim()
 		.isLength({ min: 1 })
 		.escape(),
-	body('genre.*').escape(),
+	body('genre.*').escape()
 ];
 
 /**
@@ -206,8 +213,7 @@ exports.createPost = [
 
 // Handle book delete on POST.
 exports.deletePost = async (req, res, next) => {
-	await Book.deleteOne({_id: req.body.bookId})
-		.exec()
+	await Book.deleteOne({ _id: req.body.bookId })
 		.catch(e => {
 			return next(e);
 		});

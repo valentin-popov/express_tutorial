@@ -3,6 +3,15 @@ const Book = require('../models/book');
 const { body, validationResult } = require('express-validator');
 const { globallyExcludedFields, genreViews } = require('../config');
 
+async function renderFormOnError(res, next, formTitle, genre, errors) {
+	// The form is rendered again with sanitized data
+	return res.render(genreViews.form, {
+		title: formTitle,
+		genre, 
+		errors: errors.errors
+	});
+}
+
 // Display list of all Genre.
 exports.list = (req, res, next) => {
 	Genre.find({}, globallyExcludedFields)
@@ -25,10 +34,10 @@ exports.detail = (req, res, next) => {
 				return next(err);
 			}
 			if (result.length) {
-				result[0].genre.forEach((genreItem) => {
-					if (genreItem._id == req.params.id) {
+				result[0].genre.forEach((genre) => {
+					if (genre._id == req.params.id) {
 						res.render(genreViews.detail, {
-							genre: genreItem.name,
+							genre,
 							books: result
 						});
 					}
@@ -37,12 +46,12 @@ exports.detail = (req, res, next) => {
 				// genre has no books
 				// genre.readById
 				Genre.findById(req.params.id, globallyExcludedFields)
-					.exec((err, result) => {
+					.exec((err, genre) => {
 						if (err) {
 							return next(err);
 						}
 						res.render(genreViews.detail, {
-							genre: result.name,
+							genre,
 							books: []
 						});
 					});
@@ -95,23 +104,64 @@ exports.createPost = [
 	}
 ];
 
-
 // Display Genre delete form on GET.
-exports.deleteGet = (req, res) => {
-	res.send('NOT IMPLEMENTED: Genre delete GET');
+exports.deleteGet = async (req, res) => {
+	await Promise.all([
+		Genre.findById(req.params.id, globallyExcludedFields),
+		Book.find({ genre: req.params.id }, globallyExcludedFields)
+	]).then(([genre, books]) => {
+		if (!genre) {
+			return res.redirect('/catalog/genre');
+		}
+		res.render(genreViews.delete, {
+			genre, 
+			books
+		});
+	}).catch(e => {
+		return next(e);
+	});
 };
 
 // Handle Genre delete on POST.
-exports.deletePost = (req, res) => {
-	res.send('NOT IMPLEMENTED: Genre delete POST');
+exports.deletePost = async (req, res, next) => {
+	await Genre.deleteOne({ _id: req.body.genreId})
+		.exec()
+		.catch(e => {
+			return next(e);
+		});
+	res.redirect('/catalog/genre');
 };
 
 // Display Genre update form on GET.
-exports.updateGet = (req, res) => {
-	res.send('NOT IMPLEMENTED: Genre update GET');
+exports.updateGet = async(req, res, next) => {
+	let genre = await Genre.findById(req.params.id, globallyExcludedFields).catch(e => {
+		return next(e);
+	});
+	if (!genre) {
+		return res.redirect('/catalog/genre');
+	}
+
+	res.render(genreViews.form, {
+		title: 'Update Genre',
+		genre
+	});
 };
 
 // Handle Genre update on POST.
-exports.updatePost = (req, res) => {
-	res.send('NOT IMPLEMENTED: Genre update POST');
+exports.updatePost = async (req, res, next) => {
+	const errors = validationResult(req);
+	const genre = new Genre({
+		_id: req.params.id,
+		name: req.body.name
+	});
+
+	if (!errors.isEmpty()) {
+		return renderFormOnError(res, next, 'Update Genre', genre, errors);
+	}
+	
+	await Genre.updateOne({_id: req.params.id}, genre).catch(e => {
+		return next(e);
+	});
+	
+	res.redirect(genre.url);
 };
