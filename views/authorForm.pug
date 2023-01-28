@@ -10,7 +10,7 @@ block content
       input#lastName.form-control(type='text' placeholder='Last name' name='lastName' required='true' value=(undefined===author ? '' : author.lastName))
     div.form-group
       label(for='dateOfBirth') Date of birth:
-      input#dateOfBirth.form-control(type='date' name='dateOfBirth' value=dateOfBirth)
+      input#dateOfBirth.form-control(type='date' name='dateOfBirth' value=(undefined===author ? '' : author.dateOfBirth))
       label(for='dateOfDeath') Date of death:
       input#dateOfDeath.form-control(type='date' name='dateOfDeath' value=(undefined===author ? '' : author.dateOfDeath))
     button.btn.btn-primary(type='submit') Submit
