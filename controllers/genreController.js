@@ -3,7 +3,7 @@ const Book = require('../models/book');
 const { body, validationResult } = require('express-validator');
 const { globallyExcludedFields, genreViews } = require('../config');
 
-async function renderFormOnError(res, next, formTitle, genre, errors) {
+async function renderFormOnError(res, formTitle, genre, errors) {
 	// The form is rendered again with sanitized data
 	return res.render(genreViews.form, {
 		title: formTitle,
@@ -74,12 +74,12 @@ exports.createPost = [
 
 		if (!errors.isEmpty()) {
 			// render the view again
-			res.render(genreViews.form, {
+			
+			return res.render(genreViews.form, {
 				title: 'Create Genre',
 				genre: req.body,
 				errors: errors.array()
 			});
-			return;
 		} 
 
 		// check if genre already exists

@@ -12,7 +12,7 @@ const bookInstanceFormValidation = [
 		.optional({ checkFalsy: true})
 ];
 
-async function validateFormOnError(req, res, next, formTitle, bookInstance, errors) {
+async function renderFormOnError(req, res, next, formTitle, bookInstance, errors) {
 	const books = await Book.find({}, 'title')
 	.catch(e => {
 		return next(e);
@@ -82,7 +82,7 @@ exports.createPost = [
 
 		const errors = validationResult(req);
 		if (!errors.isEmpty()) {
-			return validateFormOnError(req, res, next, 'Create Book Instance', bookInstance, errors);
+			return renderFormOnError(req, res, next, 'Create Book Instance', bookInstance, errors);
 		}
 		
 		await bookInstance.save()
@@ -151,7 +151,7 @@ exports.updatePost = [
 		});
 		
 		if (!errors.isEmpty()) {
-			return validateFormOnError(req, res, next, 'Update Book Instance', bookInstance, errors);
+			return renderFormOnError(req, res, next, 'Update Book Instance', bookInstance, errors);
 		}
 
 		await BookInstance.updateOne({_id: req.params.id}, bookInstance).catch(exc => {

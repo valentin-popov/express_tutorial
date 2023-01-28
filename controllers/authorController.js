@@ -14,11 +14,7 @@ const authorFormValidation = [
 		.toDate()
 ];
 
-function getShortDate(date) {
-	return date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate();
-}
-
-async function renderFormOnError(res, next, formTitle, author, errors) {
+async function renderFormOnError(res, formTitle, author, errors) {
 	// The form is rendered again with sanitized data
 	return res.render(authorViews.form, {
 		title: formTitle,
